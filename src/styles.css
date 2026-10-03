@@ -1,0 +1,1283 @@
+/*
+ * Dark-first. The base is a cool near-black rather than neutral grey so the
+ * accent glow behind the content has something to read against.
+ *
+ * Both palettes keep the original token names, so every existing rule below
+ * stays valid - only the values and the added scale are new.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #070a0f;
+  --bg-elevated: #10151d;
+  --bg-inset: #0a0e14;
+
+  --border: #1e2733;
+  --border-strong: #2c3846;
+
+  --text: #e8eef7;
+  --text-muted: #8a9aae;
+
+  --accent: #34d399;
+  --accent-strong: #10b981;
+  --accent-contrast: #04140d;
+  --info: #60a5fa;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  /* A scale rather than one value, so radius stays coherent as surfaces change. */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  /* Two stacked shadows read as a real light source: a tight contact shadow
+     under the surface and a wide ambient one around it. */
+  --shadow:
+    0 1px 2px rgb(2 6 12 / 40%),
+    0 8px 24px -12px rgb(2 6 12 / 70%);
+  --shadow-lg:
+    0 2px 4px rgb(2 6 12 / 35%),
+    0 24px 56px -20px rgb(2 6 12 / 80%);
+
+  /* How much of the page shows through a frosted surface. */
+  --glass-bg: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  --glass-border: color-mix(in srgb, #fff 9%, transparent);
+  --glass-blur: 18px;
+  /* A light catching the top edge is what makes a flat panel read as glass. */
+  --glass-highlight: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
+
+  --motion: 160ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+
+    --bg: #f2f5f9;
+    --bg-elevated: #ffffff;
+    --bg-inset: #f7f9fc;
+
+    --border: #dde4ed;
+    --border-strong: #c6d0dd;
+
+    --text: #0f1723;
+    --text-muted: #5b6b7e;
+
+    --accent: #0f9d68;
+    --accent-strong: #0b7f55;
+    --accent-contrast: #ffffff;
+    --info: #2563eb;
+    --warning: #b45309;
+    --danger: #dc2626;
+
+    --shadow:
+      0 1px 2px rgb(15 23 35 / 6%),
+      0 8px 24px -12px rgb(15 23 35 / 18%);
+    --shadow-lg:
+      0 2px 4px rgb(15 23 35 / 5%),
+      0 24px 56px -20px rgb(15 23 35 / 22%);
+
+    /* Glass needs a lighter tint over a light page, otherwise it reads grey. */
+    --glass-bg: color-mix(in srgb, #ffffff 76%, transparent);
+    --glass-border: color-mix(in srgb, #0f1723 8%, transparent);
+    --glass-highlight: inset 0 1px 0 color-mix(in srgb, #fff 90%, transparent);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* Three off-screen radial washes instead of one flat fill, so the frosted
+     surfaces have a varied backdrop to actually refract. */
+  background:
+    radial-gradient(
+      62rem 42rem at 10% -10%,
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      54rem 36rem at 94% 2%,
+      color-mix(in srgb, var(--info) 15%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      48rem 42rem at 50% 112%,
+      color-mix(in srgb, #8b5cf6 13%, transparent),
+      transparent 64%
+    ),
+    var(--bg);
+  /* Fixed so the wash stays put while the page scrolls. */
+  background-attachment: fixed;
+  color: var(--text);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--info);
+  text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+code,
+.mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 0.86em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 0.5em;
+  line-height: 1.2;
+  font-weight: 620;
+  /* Tightening as the type grows is what stops large headings looking loose. */
+  letter-spacing: -0.021em;
+  color: var(--text);
+}
+
+h1 {
+  font-size: 2rem;
+  /* The one place a gradient reads as decoration rather than noise. */
+  background: linear-gradient(
+    100deg,
+    var(--text) 20%,
+    color-mix(in srgb, var(--accent) 75%, var(--text))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+h3 {
+  font-size: 1.05rem;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+/* ---------- layout ---------- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  /* Frosted rather than opaque: the page wash scrolling under the bar is what
+     makes the header read as a layer above the content. */
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--info));
+  color: var(--accent-contrast);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow:
+    0 4px 14px -4px color-mix(in srgb, var(--accent) 65%, transparent),
+    var(--glass-highlight);
+}
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-right: auto;
+}
+
+/* Account dropdown. Anchored to its trigger, so it can sit flush right. */
+.user-menu {
+  position: relative;
+}
+
+/*
+ * The chevron is drawn from two borders instead of a "▾" glyph. Rendered as
+ * text it came out around 9px and 30% transparent, so it was effectively
+ * invisible, and it still depended on the font carrying that codepoint.
+ */
+.user-menu-caret {
+  flex-shrink: 0;
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.7;
+  /* The two borders meet at the bottom-right corner, so one 45-degree turn aims
+     that corner down. Symmetric about the vertical axis, so `align-items:
+     center` is enough to keep it aligned. */
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+/* Rotating a further half turn flips it to point back at the open panel. */
+.user-menu-trigger[aria-expanded="true"] .user-menu-caret {
+  transform: rotate(225deg);
+}
+
+/* Reuses the brand gradient so the trigger reads as the same product. */
+.user-menu-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--info));
+  color: var(--accent-contrast);
+  font-size: 0.78em;
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.user-menu-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A long display name must not be able to push the header layout around. */
+.user-menu-name {
+  overflow: hidden;
+  max-width: 18ch;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 236px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg), var(--glass-highlight);
+  /* Scaled in rather than appearing instantly, so the menu feels attached to
+     the trigger instead of being teleported next to it. */
+  transform-origin: top right;
+  animation: menu-in 140ms var(--ease);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.user-menu-header {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+  padding: 11px 11px 13px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.user-menu-panel a,
+.user-menu-panel button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion) var(--ease);
+}
+
+.user-menu-panel a:hover,
+.user-menu-panel button:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  text-decoration: none;
+}
+
+/*
+ * Logout and disconnect sit below the navigation links, so the first one takes
+ * the divider; the second sits flush under it as part of the same group. Needs
+ * the panel prefix to outrank the `border: none` above.
+ */
+.user-menu-panel .user-menu-action {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+}
+
+.user-menu-panel .user-menu-action + .user-menu-action {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: none;
+}
+
+.app-nav a {
+  padding: 6px 13px;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 500;
+  transition:
+    color var(--motion) var(--ease),
+    background var(--motion) var(--ease);
+}
+
+.app-nav a:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.app-nav a.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 34px 24px 72px;
+}
+
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  padding: 18px 24px;
+  border-top: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/*
+ * Every page title fades up once on mount. Short and small on purpose: a long
+ * travel reads as a loading delay, which is the one thing this must not feel
+ * like. `prefers-reduced-motion` collapses it to a single frame.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-header {
+  margin-bottom: 26px;
+  animation: rise 320ms var(--ease);
+}
+
+.page-header p {
+  max-width: 68ch;
+  color: var(--text-muted);
+  font-size: 1.02rem;
+}
+
+/* Puts the primary action right under the pitch instead of leaving the header
+   as a wall of text. */
+.hero-actions {
+  margin-top: 18px;
+}
+
+/* Three equal columns: the counts do not need to reflow like card grids do. */
+.stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 20px;
+}
+
+/* Keeps a long network name or tip number from blowing out the tile. */
+.stat-text {
+  font-size: 1.25rem;
+}
+
+/* Numbered explainer: the index badge carries the "1." already in the title, so
+   the panel just needs to separate itself from the surrounding copy. */
+.step {
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg-inset) 55%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+.step h3 {
+  margin: 0 0 6px;
+  font-size: 0.98rem;
+  color: var(--accent);
+}
+
+.step p {
+  margin: 0;
+}
+
+/* ---------- identity header ---------- */
+
+.identity {
+  gap: 14px;
+  min-width: 0;
+}
+
+.identity-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--info));
+  color: var(--accent-contrast);
+  font-size: 1.3rem;
+  font-weight: 700;
+  overflow: hidden;
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.identity-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identity-name {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+/* ---------- typography helpers ---------- */
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.break {
+  word-break: break-all;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.row-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.spread {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---------- surfaces ---------- */
+
+.card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), var(--glass-highlight);
+  padding: 20px;
+  transition:
+    transform var(--motion) var(--ease),
+    box-shadow var(--motion) var(--ease),
+    border-color var(--motion) var(--ease);
+}
+
+/*
+ * Applied only to cards that are actually a link target. Lifting every panel on
+ * hover would promise a click that most of them do not offer.
+ */
+.card-hover:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: var(--shadow-lg), var(--glass-highlight);
+}
+
+.card-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.card-title h2,
+.card-title h3 {
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.grid-2 {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.inset {
+  background: color-mix(in srgb, var(--bg-inset) 72%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+/* ---------- stat tiles ---------- */
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--bg-inset) 60%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.stat-value {
+  /* Tabular figures stop the value jittering as counts change under a refresh. */
+  font-variant-numeric: tabular-nums;
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.stat-hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.alert-body {
+  min-width: 0;
+}
+
+/* ---------- data list ---------- */
+
+.dl {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: 10px 18px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.dl dt {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.dl dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+@media (max-width: 560px) {
+  .dl {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+
+  .dl dd {
+    margin-bottom: 10px;
+  }
+}
+
+/* ---------- table ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), var(--glass-highlight);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--bg-inset) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr {
+  transition: background var(--motion) var(--ease);
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+/* ---------- forms ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > label {
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+
+.field .hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--bg-inset) 76%, transparent);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.92rem;
+  transition:
+    border-color var(--motion) var(--ease),
+    box-shadow var(--motion) var(--ease),
+    background var(--motion) var(--ease);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 75%, transparent);
+}
+
+/*
+ * A focus ring drawn with a box-shadow rather than an outline, so it can spread
+ * as a soft glow without shifting the layout. Text fields still get the ring on
+ * click, not only on keyboard, because they are edited directly.
+ */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 62%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
+.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-inset) 76%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 550;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform var(--motion) var(--ease),
+    border-color var(--motion) var(--ease),
+    background var(--motion) var(--ease),
+    box-shadow var(--motion) var(--ease),
+    color var(--motion) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  text-decoration: none;
+}
+
+/* Pressing reads as a real press only if it moves; a button that sinks is
+   confirming the click far better than a colour change alone. */
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  border-color: transparent;
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  border-color: transparent;
+  box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+.btn-sm {
+  padding: 5px 11px;
+  font-size: 0.83rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ---------- badges ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--bg-inset) 70%, transparent);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.badge-verified,
+.badge-active,
+.badge-committed {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  box-shadow: 0 0 14px -6px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.badge-pending,
+.badge-submitted,
+.badge-unable {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  background: color-mix(in srgb, var(--warning) 13%, transparent);
+}
+
+.badge-melted,
+.badge-failed,
+.badge-not_found {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+
+.badge-unknown {
+  color: var(--info);
+  border-color: color-mix(in srgb, var(--info) 42%, transparent);
+  background: color-mix(in srgb, var(--info) 12%, transparent);
+}
+
+.badge-dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ---------- alerts ---------- */
+
+.alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--bg-inset) 70%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--glass-highlight);
+  font-size: 0.9rem;
+}
+
+.alert strong {
+  display: block;
+}
+
+/*
+ * Each kind keeps its hue on the border, the wash and the icon, so the state is
+ * readable from the edge of the box and not only from the text.
+ */
+.alert-error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 42%, transparent);
+  background: color-mix(in srgb, var(--danger) 11%, transparent);
+}
+
+.alert-success {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.alert-warning {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 42%, transparent);
+  background: color-mix(in srgb, var(--warning) 11%, transparent);
+}
+
+.alert-info {
+  color: var(--info);
+  border-color: color-mix(in srgb, var(--info) 42%, transparent);
+  background: color-mix(in srgb, var(--info) 11%, transparent);
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+/* Lets an alert carry a full sentence plus a follow-up action. */
+.alert p {
+  margin: 6px 0 0;
+}
+
+.alert-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- empty / loading ---------- */
+
+.empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+  font-size: 1.5rem;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 620;
+  color: var(--text);
+}
+
+/* A full-page empty state: taller, centred, and given room to breathe. */
+.empty-lg {
+  padding: 80px 24px;
+}
+
+.empty-lg .empty-icon {
+  width: 76px;
+  height: 76px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.empty-lg .empty-title {
+  font-size: 1.35rem;
+}
+
+.empty-body {
+  max-width: 46ch;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-block {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 44px;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ---------- dialog ---------- */
+
+dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  color: var(--text);
+  /* Frosted over the blurred page behind it, which is what makes a modal read as
+     a layer rather than a rectangle pasted on top. */
+  background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), var(--glass-highlight);
+}
+
+dialog::backdrop {
+  background: rgb(3 7 12 / 68%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/*
+ * While a write is in flight the dialog leaves the top layer so the wallet's
+ * request UI stays clickable (see Dialog.tsx). The UA stylesheet only centres
+ * `:modal`, so centring has to be re-applied here, and `z-index` is kept below
+ * the wallet connector (999) on purpose.
+ */
+dialog:not(:modal) {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  overflow: auto;
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialog-header h2 {
+  margin: 0;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* ---------- misc ---------- */
+
+.hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.copy-btn {
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+  margin-bottom: 18px;
+  padding: 18px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), var(--glass-highlight);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.credential-card-title {
+  margin: 0 0 5px;
+  font-size: 1.05rem;
+  font-weight: 620;
+  letter-spacing: -0.012em;
+}
+
+/* The title is the card's main link, so it gets the accent on hover too. */
+.credential-card-title a {
+  color: var(--text);
+  text-decoration: none;
+  transition: color var(--motion) var(--ease);
+}
+
+.card-hover:hover .credential-card-title a,
+.credential-card-title a:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.credential-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.credential-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
