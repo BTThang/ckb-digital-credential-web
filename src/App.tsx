@@ -11,6 +11,7 @@ import NotFoundPage from "@/pages/NotFoundPage";
 import ProfilePage from "@/pages/ProfilePage";
 import TransactionsPage from "@/pages/TransactionsPage";
 import VerifyPage from "@/pages/VerifyPage";
+import VerifyResultPage from "@/pages/VerifyResultPage";
 import RequireAuth from "@/routes/RequireAuth";
 
 export default function App() {
@@ -22,6 +23,8 @@ export default function App() {
         <Route path="credentials" element={<CredentialsPage />} />
         <Route path="credentials/:id" element={<CredentialDetailPage />} />
         <Route path="verify" element={<VerifyPage />} />
+        {/* The shareable result page: also public, also chain-only. */}
+        <Route path="verify/:credentialId" element={<VerifyResultPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="issue" element={<IssuePage />} />
 

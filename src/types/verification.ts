@@ -67,3 +67,45 @@ export interface SporeVerificationReport {
   verification: SporeVerification;
   indexed: null;
 }
+
+/**
+ * `GET /api/verify/:credentialId` - the public verdict for third parties and
+ * for the shareable `/verify/:credentialId` page. Decided entirely by the
+ * Verification Service on the backend; the page only renders it.
+ */
+export const PUBLIC_VERIFICATION_STATES = [
+  "active",
+  "invalid",
+  "not_found",
+  "unable_to_verify",
+] as const;
+export type PublicVerificationState = (typeof PUBLIC_VERIFICATION_STATES)[number];
+
+/** Credential facts from the live cell payload. `null` when no cell is live. */
+export interface PublicVerificationCredential {
+  id: string;
+  title: string | null;
+  type: string | null;
+  issuer: { name: string; type: string | null } | null;
+  holder: string | null;
+  issuedAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface PublicVerificationBlockchain {
+  network: string;
+  status: "active" | "not_found" | "unknown";
+  sporeId: string;
+  currentOwner: string | null;
+  creationTxHash: string | null;
+}
+
+export interface PublicVerification {
+  valid: boolean;
+  state: PublicVerificationState;
+  source: "ckb";
+  reason: string | null;
+  checkedAt: string;
+  credential: PublicVerificationCredential | null;
+  blockchain: PublicVerificationBlockchain;
+}

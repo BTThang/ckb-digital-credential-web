@@ -8,6 +8,7 @@ import type {
   HealthReport,
   ListCredentialsQuery,
   OwnedSpore,
+  PublicVerification,
   SporeVerificationReport,
   TransactionRecord,
   TransactionStatus,
@@ -161,6 +162,18 @@ export const api = {
     return data;
   },
 
+  /**
+   * `GET /api/verify/:credentialId` - the public verdict for the shareable
+   * verification page. The backend decides `valid`/`state` from the chain;
+   * the page never re-derives it.
+   */
+  async verifyCredentialId(credentialId: string): Promise<PublicVerification> {
+    const { data } = await request<PublicVerification>(
+      `/api/verify/${encodeURIComponent(credentialId)}`,
+    );
+    return data;
+  },
+
   /** Live Spores held by an address, read from chain (not the index). */
   async listSporesByOwner(
     address: string,
@@ -195,9 +208,10 @@ export const api = {
   async listTransactions(
     limit = 25,
     offset = 0,
+    sporeId?: string,
   ): Promise<{ data: TransactionRecord[]; total: number }> {
     const body = await request<TransactionRecord[]>("/api/transactions", {
-      query: { limit, offset },
+      query: { limit, offset, sporeId },
     });
     // An empty or unexpected body must read as "no rows" rather than throwing on
     // `undefined.length`, which would blank the whole page instead of the list.

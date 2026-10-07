@@ -17,3 +17,17 @@ if (!window.matchMedia) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => undefined;
 }
+
+// jsdom exposes `HTMLDialogElement` but not its show/close methods, and the
+// app's `Dialog` calls them. A no-op that flips `open` is enough for tests.
+if (typeof HTMLDialogElement !== "undefined") {
+  HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.show ??= function show(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
+    this.open = false;
+  };
+}

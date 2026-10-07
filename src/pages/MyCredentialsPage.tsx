@@ -36,10 +36,10 @@ export default function MyCredentialsPage() {
       <div className="page-header">
         <h1>My credentials</h1>
         <p>
-          Indexed rows owned by{" "}
-          <code className="break">{owner}</code>. Ownership itself is read from
-          the chain — use <Link to="/verify">Verify</Link> for a chain-anchored
-          answer.
+          <strong>Holder</strong> view: indexed rows owned by{" "}
+          <code className="break">{owner}</code>. You can present any of them —
+          <em>Verify</em> opens the public page and <em>Share</em> shows a QR
+          code. Ownership itself is read from the chain, not from this list.
         </p>
       </div>
 

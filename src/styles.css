@@ -1281,3 +1281,55 @@ dialog:not(:modal) {
   white-space: nowrap;
   border: 0;
 }
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  counter-reset: step;
+}
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 12px;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 18px;
+  bottom: -16px;
+  width: 2px;
+  background: color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+.timeline-marker {
+  position: relative;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.timeline[data-state="REVOKED"] .timeline-marker,
+.timeline[data-state="NOT_FOUND"] .timeline-marker {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+}
+
+.timeline-body {
+  min-width: 0;
+}
+
+.timeline-body a {
+  word-break: break-all;
+}

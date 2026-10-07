@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import CopyButton from "@/components/CopyButton";
+import CredentialLifecycle from "@/components/CredentialLifecycle";
 import Dialog from "@/components/Dialog";
+import ShareQrButton from "@/components/ShareQrButton";
 import { Alert, Card, Hash, Spinner, StatusBadge } from "@/components/ui";
 import { useWallet } from "@/context/WalletProvider";
 import { useAsync } from "@/hooks";
@@ -211,12 +213,15 @@ export default function CredentialDetailPage() {
         <Card>
           <div className="card-title">
             <h2>On-chain record</h2>
-            <Link
-              className="btn btn-sm"
-              to={`/verify?sporeId=${encodeURIComponent(record.sporeId)}`}
-            >
-              Full verification
-            </Link>
+            <div className="row">
+              <ShareQrButton sporeId={record.sporeId} label="QR code" />
+              <Link
+                className="btn btn-sm"
+                to={`/verify?sporeId=${encodeURIComponent(record.sporeId)}`}
+              >
+                Full verification
+              </Link>
+            </div>
           </div>
 
           <dl className="dl">
@@ -258,6 +263,8 @@ export default function CredentialDetailPage() {
             <dd>{formatDateTime(record.updatedAt)}</dd>
           </dl>
         </Card>
+
+        <CredentialLifecycle credential={record} />
 
         <Card>
           <div className="card-title">

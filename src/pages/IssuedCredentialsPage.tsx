@@ -33,9 +33,11 @@ export default function IssuedCredentialsPage() {
       <div className="page-header">
         <h1>Issued credentials</h1>
         <p>
-          Indexed credentials whose issuer is{" "}
+          <strong>Issuer</strong> view: indexed credentials whose issuer is{" "}
           <code className="break">{issuer}</code>. An issuer record is an
-          off-chain claim - verify a credential to confirm who really holds it.
+          off-chain claim — use <em>Verify</em> or the QR <em>Share</em> action
+          on a credential to confirm what the chain says, including who holds it
+          now.
         </p>
       </div>
 

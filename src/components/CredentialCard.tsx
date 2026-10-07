@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 
+import ShareQrButton from "@/components/ShareQrButton";
+import { Hash, StatusBadge } from "@/components/ui";
 import { useWallet } from "@/context/WalletProvider";
 import type { Credential } from "@/types";
 import { addressExplorerUrl, txExplorerUrl } from "@/utils/explorer";
 import { formatDate, humanizeToken, isExpired, shortAddress } from "@/utils/format";
-import { Hash, StatusBadge } from "@/components/ui";
 
 /** One credential in a list. Only cached fields are shown; state is a hint. */
 export default function CredentialCard({
@@ -63,6 +64,14 @@ export default function CredentialCard({
         >
           creation tx
         </a>
+      </div>
+
+      {/* Holder- and issuer-facing actions: anyone can present a credential. */}
+      <div className="row" style={{ marginTop: 10 }}>
+        <Link className="btn btn-sm" to={`/verify/${credential.sporeId}`}>
+          Verify
+        </Link>
+        <ShareQrButton sporeId={credential.sporeId} label="Share" />
       </div>
     </article>
   );

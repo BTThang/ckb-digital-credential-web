@@ -26,6 +26,28 @@ const STEPS = [
   },
 ];
 
+/** The three roles from the product model. Only the verifier needs no account. */
+const ROLES = [
+  {
+    role: "Issuer",
+    body: "A company, school or organizer signs a credential into a Spore cell and can track everything it issued.",
+    to: "/issue",
+    cta: "Issue a credential",
+  },
+  {
+    role: "Holder",
+    body: "The wallet that owns the cell. A holder presents the credential, shares a QR code, and can transfer it on.",
+    to: "/my",
+    cta: "My credentials",
+  },
+  {
+    role: "Verifier",
+    body: "Anyone checking a credential — no account, wallet or signature. Open the verification URL, scan a QR, or call the public API.",
+    to: "/verify",
+    cta: "Verify a credential",
+  },
+];
+
 export default function HomePage() {
   const { address, signer } = useWallet();
   const { health } = useHealth();
@@ -147,6 +169,23 @@ export default function HomePage() {
           )}
         </Card>
       </div>
+
+      <Card>
+        <div className="card-title">
+          <h2>Who does what</h2>
+        </div>
+        <div className="grid-2">
+          {ROLES.map((entry) => (
+            <div key={entry.role} className="step">
+              <h3>{entry.role}</h3>
+              <p className="muted small">{entry.body}</p>
+              <Link className="btn btn-sm" to={entry.to}>
+                {entry.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Card>
         <div className="card-title">
