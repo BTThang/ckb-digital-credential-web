@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import CopyButton from "@/components/CopyButton";
@@ -33,10 +33,26 @@ export default function CredentialDetailPage() {
     [id],
   );
 
-  const record = credential.data;
-  const isOwner = Boolean(record && address && record.ownerAddress === address);
+  const { data: record, setData: setCredential } = credential;
+  const verificationState = verification.data?.state ?? null;
+  const chain = verification.data?.verification ?? null;
+  // Ownership and liveness come from the live cell whenever the chain has been
+  // read, so a stale index row can neither hide the write actions nor offer them
+  // for a credential the connected wallet no longer holds.
+  const ownerAddress = chain?.currentOwner ?? record?.ownerAddress;
+  const isOwner = Boolean(record && address && ownerAddress === address);
   const expired = isExpired(record?.expirationDate);
-  const canWrite = Boolean(signer && isOwner && record && record.status === "active" && !expired);
+  const canWrite = Boolean(
+    signer && isOwner && record && verificationState === "verified" && !expired,
+  );
+
+  // The verify call reconciles the index row server-side, so adopt the
+  // reconciled credential it returns and keep the badge in step with the chain.
+  useEffect(() => {
+    if (verification.data?.credential) {
+      setCredential(verification.data.credential);
+    }
+  }, [verification.data, setCredential]);
 
   function closeDialog() {
     setDialog("none");

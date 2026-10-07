@@ -22,8 +22,13 @@ vi.mock("@/services/api", () => ({
   },
 }));
 
+const walletState = vi.hoisted(() => ({
+  signer: null as unknown,
+  address: null as string | null,
+}));
+
 vi.mock("@/context/WalletProvider", () => ({
-  useWallet: () => ({ signer: null, address: null }),
+  useWallet: () => walletState,
 }));
 
 vi.mock("qrcode", () => ({
@@ -94,6 +99,8 @@ describe("CredentialDetailPage QR sharing", () => {
     getCredential.mockResolvedValue(credential);
     verifyCredential.mockResolvedValue(report);
     listTransactions.mockResolvedValue({ data: [], total: 0 });
+    walletState.signer = null;
+    walletState.address = null;
   });
 
   afterEach(() => {
@@ -122,6 +129,11 @@ describe("CredentialDetailPage QR sharing", () => {
     getCredential.mockResolvedValue({
       ...credential,
       ownerAddress: "ckt1qnewowner",
+    });
+    verifyCredential.mockResolvedValue({
+      ...report,
+      credential: { ...credential, ownerAddress: "ckt1qnewowner" },
+      verification: { ...report.verification, currentOwner: "ckt1qnewowner" },
     });
     listTransactions.mockResolvedValue({
       total: 2,
@@ -164,7 +176,20 @@ describe("CredentialDetailPage QR sharing", () => {
   });
 
   it("reports a melted credential as revoked", async () => {
-    getCredential.mockResolvedValue({ ...credential, status: "melted" });
+    const melted = { ...credential, status: "melted" as const };
+    getCredential.mockResolvedValue(melted);
+    verifyCredential.mockResolvedValue({
+      ...report,
+      state: "not_found",
+      credential: melted,
+      verification: {
+        ...report.verification,
+        state: "not_found",
+        sporeExists: false,
+        currentOwner: null,
+        creationTxStatus: "committed",
+      },
+    });
 
     renderPage();
 
@@ -173,5 +198,35 @@ describe("CredentialDetailPage QR sharing", () => {
     expect(
       screen.getAllByText(/no longer exists on chain/i).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("offers transfer and melt when the live cell confirms ownership, even if the index row is stale", async () => {
+    walletState.signer = { sign: vi.fn() };
+    walletState.address = "ckt1qholder";
+    // The index still says "pending" from issue time; the chain says verified.
+    getCredential.mockResolvedValue({ ...credential, status: "pending" });
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Transfer" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Melt" })).toBeInTheDocument();
+  });
+
+  it("hides transfer and melt when the live cell shows another owner", async () => {
+    walletState.signer = { sign: vi.fn() };
+    walletState.address = "ckt1qsomebodyelse";
+
+    renderPage();
+
+    await screen.findByText("CKB Developer Certificate");
+    await waitFor(() => expect(verifyCredential).toHaveBeenCalled());
+    expect(
+      screen.queryByRole("button", { name: "Transfer" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Melt" }),
+    ).not.toBeInTheDocument();
   });
 });
