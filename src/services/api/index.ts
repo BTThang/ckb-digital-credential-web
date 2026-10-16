@@ -3,8 +3,11 @@ import type {
   AuthSession,
   AuthUser,
   AuthVerifyResult,
+  CoreVerificationResult,
   CreateCredentialPayload,
   Credential,
+  CredentialFamily,
+  FamilyDescriptor,
   HealthReport,
   ListCredentialsQuery,
   OwnedSpore,
@@ -171,6 +174,34 @@ export const api = {
     const { data } = await request<PublicVerification>(
       `/api/verify/${encodeURIComponent(credentialId)}`,
     );
+    return data;
+  },
+
+  async listFamilies(): Promise<FamilyDescriptor[]> {
+    const { data } = await request<FamilyDescriptor[]>("/api/verify/families");
+    return data;
+  },
+
+  async verify(params: {
+    identifier: string;
+    family?: CredentialFamily | string;
+    hint?: string | null;
+    /**
+     * Phase 5 - asks the backend to also answer "does this credential belong to
+     * this address?". The backend derives the real owner from the chain; this
+     * value only ever becomes `ownership.matches`, never the verdict.
+     */
+    expectedOwner?: string;
+  }): Promise<CoreVerificationResult> {
+    const { data } = await request<CoreVerificationResult>("/api/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        identifier: params.identifier,
+        ...(params.family ? { family: params.family } : {}),
+        hint: params.hint ?? null,
+        ...(params.expectedOwner ? { expectedOwner: params.expectedOwner } : {}),
+      }),
+    });
     return data;
   },
 

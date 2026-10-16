@@ -1,6 +1,7 @@
 import type { ccc } from "@ckb-ccc/ccc";
 
 import { api } from "@/services/api";
+import { createCredentialProof } from "@/services/credential-proof";
 import {
   createSporeCredential,
   meltSporeCredential,
@@ -107,6 +108,15 @@ export async function issueCredential(
     issueDate: input.issueDate,
     expirationDate: input.expirationDate || null,
   });
+
+  // Phase 1: sign the truncated payload's projection BEFORE any tx is built, so
+  // the signed bytes match exactly what will be written on-chain.
+  payload.issuerAddress = input.issuerAddress;
+  payload.proof = await createCredentialProof(
+    payload,
+    input.signer,
+    input.issuerAddress,
+  );
 
   const { txHash, sporeId } = await createSporeCredential(
     input.signer,

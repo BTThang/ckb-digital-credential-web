@@ -31,6 +31,15 @@ vi.mock("@/context/WalletProvider", () => ({
   useWallet: () => walletState,
 }));
 
+const authState = vi.hoisted(() => ({
+  user: null as unknown,
+  initializing: false,
+}));
+
+vi.mock("@/context/AuthProvider", () => ({
+  useAuth: () => authState,
+}));
+
 vi.mock("qrcode", () => ({
   default: {
     toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,QRQR"),
@@ -101,6 +110,16 @@ describe("CredentialDetailPage QR sharing", () => {
     listTransactions.mockResolvedValue({ data: [], total: 0 });
     walletState.signer = null;
     walletState.address = null;
+    authState.user = {
+      id: 1,
+      walletAddress: "ckt1qholder",
+      displayName: "Ada",
+      avatarUrl: null,
+      bio: null,
+      organizationName: null,
+      organizationType: null,
+    };
+    authState.initializing = false;
   });
 
   afterEach(() => {

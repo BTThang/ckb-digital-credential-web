@@ -108,4 +108,116 @@ export interface PublicVerification {
   checkedAt: string;
   credential: PublicVerificationCredential | null;
   blockchain: PublicVerificationBlockchain;
+  cryptographic: CryptographicVerification;
+  combined: CombinedVerification;
+}
+
+export const CRYPTOGRAPHIC_STATUSES = [
+  "verified",
+  "invalid",
+  "legacy",
+  "unsupported",
+  "unavailable",
+] as const;
+export type CryptographicStatus = (typeof CRYPTOGRAPHIC_STATUSES)[number];
+
+export interface CryptographicChecks {
+  signature: boolean;
+  issuer: boolean;
+}
+
+export interface CryptographicVerification {
+  valid: boolean;
+  status: CryptographicStatus;
+  reason: string | null;
+  checks: CryptographicChecks | null;
+  proof: {
+    hasProof: boolean;
+    type: string | null;
+    algorithm: string | null;
+    created: string | null;
+    signType: string | null;
+    issuerAddress: string | null;
+  } | null;
+}
+
+export interface CombinedVerification {
+  valid: boolean;
+  status: "verified" | "invalid";
+  reason: string | null;
+}
+
+/** Phase 2/3 - core family-agnostic verification types. */
+export const CORE_VERIFICATION_STATES = [
+  "valid",
+  "invalid",
+  "not_found",
+  "unable_to_verify",
+  "unsupported",
+] as const;
+export type CoreVerificationState = (typeof CORE_VERIFICATION_STATES)[number];
+
+export const CREDENTIAL_FAMILIES = [
+  "spore",
+  "vellum-claim",
+  "ckb-pop",
+] as const;
+export type CredentialFamily = (typeof CREDENTIAL_FAMILIES)[number];
+
+export interface FamilyVerification {
+  family: CredentialFamily;
+  state: CoreVerificationState;
+  valid: boolean;
+  reason: string | null;
+  checkedAt: string;
+  evidence: unknown;
+}
+
+/** Phase 5 - issuer evidence derived from the family's own evidence. */
+export interface IssuerEvidence {
+  family: CredentialFamily;
+  /** The issuer address the credential claims; null when none is carried. */
+  address: string | null;
+  /** The issuer-proof verdict. Only `verified` proves the address binding. */
+  proofStatus: CryptographicStatus;
+  /** True only when the proof verified *and* binds the key to `address`. */
+  verified: boolean;
+  /** Self-asserted payload metadata - display only, never proof. */
+  name: string | null;
+  type: string | null;
+}
+
+/**
+ * Phase 5 - the answer to "does this credential belong to the expected holder?".
+ * Present only when the verifier supplied `expectedOwner`. `matches` is
+ * fail-closed: it is true only when both addresses resolved to the same lock
+ * script on this network.
+ */
+export interface OwnershipVerification {
+  expectedOwner: string;
+  chainOwner: string | null;
+  matches: boolean;
+  reason: string | null;
+  checkedAt: string;
+}
+
+export interface CoreVerificationResult {
+  identifier: string;
+  family: CredentialFamily | null;
+  supported: boolean;
+  routed: boolean;
+  state: CoreVerificationState;
+  valid: boolean;
+  reason: string | null;
+  checkedAt: string;
+  result: FamilyVerification | null;
+  /** Always present; null when the family has no issuer concept. */
+  issuer: IssuerEvidence | null;
+  /** Present only when the caller supplied an expected owner. */
+  ownership?: OwnershipVerification;
+}
+
+export interface FamilyDescriptor {
+  family: CredentialFamily;
+  description: string;
 }

@@ -26,7 +26,17 @@ export default function App() {
         {/* The shareable result page: also public, also chain-only. */}
         <Route path="verify/:credentialId" element={<VerifyResultPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
-        <Route path="issue" element={<IssuePage />} />
+
+        {/* Session-gated. Issuing records a claim about a credential, so the
+            write endpoints behind this page are authenticated (Phase 5). */}
+        <Route
+          path="issue"
+          element={
+            <RequireAuth>
+              <IssuePage />
+            </RequireAuth>
+          }
+        />
 
         {/* Session-gated. */}
         <Route

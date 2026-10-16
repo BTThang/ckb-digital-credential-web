@@ -24,12 +24,31 @@ export const CREDENTIAL_STATUSES = [
 ] as const;
 export type CredentialStatus = (typeof CREDENTIAL_STATUSES)[number];
 
+export const PROOF_TYPE = "CKB-CredentialSignature";
+export const PROOF_ALGORITHM = "secp256k1";
+export const PROOF_SIGN_TYPES = ["CkbSecp256k1", "JoyId"] as const;
+export type ProofSignType = (typeof PROOF_SIGN_TYPES)[number];
+
+export interface CredentialProof {
+  type: string;
+  algorithm: string;
+  /** ISO-8601 UTC instant */
+  created: string;
+  signType: ProofSignType;
+  identity: string;
+  signature: string;
+}
+
 /**
  * The JSON document stored in the Spore cell.
  *
  * The owner is deliberately absent: the live cell's lock script is the
  * authoritative owner, and a second copy here would be a weaker source of
  * truth that could silently disagree after a transfer.
+ *
+ * Phase 1: `issuerAddress` and `proof` are optional to keep legacy cells
+ * readable. A credential with no proof is reported as `legacy` in public
+ * verification.
  */
 export interface CredentialPayload {
   version: number;
@@ -41,6 +60,8 @@ export interface CredentialPayload {
   issueDate: string;
   expirationDate: string | null;
   network: string;
+  issuerAddress?: string;
+  proof?: CredentialProof;
 }
 
 /** An indexed credential. The API's cache of the chain, never the truth. */

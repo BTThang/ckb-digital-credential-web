@@ -1,7 +1,7 @@
 import { ccc } from "@ckb-ccc/ccc";
 
 import { NETWORK } from "@/config";
-import type { CredentialType, IssuerType } from "@/types";
+import type { CredentialProof, CredentialType, IssuerType } from "@/types";
 
 /**
  * Shape version of the JSON stored in the Spore's `content` field.
@@ -31,6 +31,13 @@ export interface CredentialPayload {
   /** `null` means the credential never expires. */
   expirationDate: string | null;
   network: string;
+  /**
+   * Phase 1: the issuer's address and its signature over the credential
+   * envelope. Both are optional so pre-existing cells stay readable and are
+   * reported as `legacy` rather than rejected.
+   */
+  issuerAddress?: string;
+  proof?: CredentialProof;
 }
 
 export interface CredentialPayloadInput {
@@ -124,7 +131,7 @@ export function parsePayload(
     return null;
   }
 
-  return {
+  const payload: CredentialPayload = {
     version: CREDENTIAL_PAYLOAD_VERSION,
     title: candidate.title,
     description: typeof candidate.description === "string" ? candidate.description : "",
@@ -135,5 +142,35 @@ export function parsePayload(
     expirationDate:
       typeof candidate.expirationDate === "string" ? candidate.expirationDate : null,
     network: typeof candidate.network === "string" ? candidate.network : "testnet",
+  };
+
+  // Phase 1 fields are copied only when actually present, so a legacy cell
+  // (no proof) round-trips with exactly its original keys.
+  if (typeof candidate.issuerAddress === "string") {
+    payload.issuerAddress = candidate.issuerAddress;
+  }
+  const proof = parseProof(candidate.proof);
+  if (proof) payload.proof = proof;
+
+  return payload;
+}
+
+/** Validate and copy a `proof` field. Returns null if invalid/absent. */
+function parseProof(value: unknown): CredentialProof | null {
+  if (typeof value !== "object" || value === null) return null;
+  const v = value as Record<string, unknown>;
+  if (typeof v.type !== "string" || v.type.length === 0) return null;
+  if (typeof v.algorithm !== "string" || v.algorithm.length === 0) return null;
+  if (typeof v.created !== "string" || Number.isNaN(Date.parse(v.created))) return null;
+  if (typeof v.identity !== "string" || v.identity.length < 2) return null;
+  if (typeof v.signature !== "string" || v.signature.length < 2) return null;
+  if (v.signType !== "CkbSecp256k1" && v.signType !== "JoyId") return null;
+  return {
+    type: v.type,
+    algorithm: v.algorithm,
+    created: v.created,
+    identity: v.identity,
+    signature: v.signature,
+    signType: v.signType,
   };
 }

@@ -52,8 +52,14 @@ export type QueryParams = Record<string, string | number | boolean | undefined>;
 /**
  * Without this a request to a wedged or half-open socket hangs forever and the
  * spinner never resolves, which reads as a slower version of the same bug.
+ *
+ * This is deliberately longer than the backend's own `VERIFY_TIMEOUT_MS`
+ * ceiling (20s by default). The backend resolves a stalled verification to a
+ * `200` with `state: "unable_to_verify"`; if the browser aborted first, the page
+ * would show a transport failure instead of that normalized verdict. Waiting
+ * past the backend's ceiling lets the fail-closed state arrive intact.
  */
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 25_000;
 
 /**
  * Turns a rejected `fetch` into something a user can act on. The browser's own

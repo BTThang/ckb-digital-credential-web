@@ -6,6 +6,7 @@ import CredentialLifecycle from "@/components/CredentialLifecycle";
 import Dialog from "@/components/Dialog";
 import ShareQrButton from "@/components/ShareQrButton";
 import { Alert, Card, Hash, Spinner, StatusBadge } from "@/components/ui";
+import { useAuth } from "@/context/AuthProvider";
 import { useWallet } from "@/context/WalletProvider";
 import { useAsync } from "@/hooks";
 import { api } from "@/services/api";
@@ -20,6 +21,7 @@ type DialogKind = "none" | "transfer" | "melt";
 export default function CredentialDetailPage() {
   const { id = "" } = useParams();
   const { signer, address } = useWallet();
+  const { user, initializing } = useAuth();
 
   const [dialog, setDialog] = useState<DialogKind>("none");
   const [recipient, setRecipient] = useState("");
@@ -42,9 +44,19 @@ export default function CredentialDetailPage() {
   const ownerAddress = chain?.currentOwner ?? record?.ownerAddress;
   const isOwner = Boolean(record && address && ownerAddress === address);
   const expired = isExpired(record?.expirationDate);
+  // Transfer and melt report back to the index, which is an authenticated write
+  // (Phase 5). Without a session the on-chain action would still work but the
+  // index would silently drift, so the actions are held back and explained.
   const canWrite = Boolean(
-    signer && isOwner && record && verificationState === "verified" && !expired,
+    user &&
+      signer &&
+      isOwner &&
+      record &&
+      verificationState === "verified" &&
+      !expired,
   );
+  const needsSignIn =
+    !initializing && !user && signer && isOwner && verificationState === "verified";
 
   // The verify call reconciles the index row server-side, so adopt the
   // reconciled credential it returns and keep the badge in step with the chain.
@@ -180,6 +192,15 @@ export default function CredentialDetailPage() {
           <Alert kind="warning" title="Melted">
             The Spore cell was destroyed, so this credential no longer exists on
             chain. The row below is kept for history only.
+          </Alert>
+        </div>
+      ) : null}
+
+      {needsSignIn ? (
+        <div style={{ marginBottom: 18 }}>
+          <Alert kind="warning" title="Sign in to transfer or melt">
+            These actions report back to the index, which requires a session.
+            Sign in with the wallet that holds this credential to continue.
           </Alert>
         </div>
       ) : null}

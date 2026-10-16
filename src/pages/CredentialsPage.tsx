@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import CredentialCard from "@/components/CredentialCard";
 import { Alert, Card, EmptyState, Spinner } from "@/components/ui";
+import { useAuth } from "@/context/AuthProvider";
 import { useWallet } from "@/context/WalletProvider";
 import { useAsync, useDebounced } from "@/hooks";
 import { api, type ListCredentialsQuery } from "@/services/api";
@@ -18,6 +19,7 @@ const PAGE_SIZE = 12;
 
 export default function CredentialsPage() {
   const { address } = useWallet();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<CredentialStatus | "">("");
   const [type, setType] = useState<CredentialType | "">("");
@@ -203,12 +205,19 @@ export default function CredentialsPage() {
           <button
             type="button"
             className="btn btn-sm"
-            disabled={list.loading}
+            disabled={list.loading || !user}
+            title={user ? undefined : "Sign in to reconcile the index"}
             onClick={() => void api.syncCredentials().then(() => list.reload())}
           >
             Sync index
           </button>
         </div>
+        {!user ? (
+          <p className="muted small" style={{ marginTop: 8 }}>
+            Sign in to re-read the index — the sync endpoint is authenticated.
+            Verification never needs a session.
+          </p>
+        ) : null}
       </Card>
     </>
   );

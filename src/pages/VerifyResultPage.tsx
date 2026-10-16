@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 
 import { Alert, Card, Hash, Spinner, StatusBadge } from "@/components/ui";
+import { NETWORK } from "@/config";
 import { useAsync } from "@/hooks";
 import { api } from "@/services/api";
 import type { PublicVerification } from "@/types";
@@ -78,6 +79,9 @@ function Facts({ verification }: { verification: PublicVerification }) {
       <dt>Credential</dt>
       <dd>{credential ? (credential.title ?? "—") : "—"}</dd>
 
+      <dt>Family</dt>
+      <dd>Spore</dd>
+
       <dt>Type</dt>
       <dd>{credential?.type ? humanizeToken(credential.type) : "—"}</dd>
 
@@ -129,7 +133,10 @@ function Facts({ verification }: { verification: PublicVerification }) {
       </dd>
 
       <dt>Network</dt>
-      <dd>CKB Testnet ({blockchain.network})</dd>
+      <dd>
+        CKB {NETWORK === "mainnet" ? "Mainnet" : "Testnet"} (
+        {blockchain.network})
+      </dd>
 
       <dt>Source</dt>
       <dd>{verification.source === "ckb" ? "CKB on-chain state" : verification.source}</dd>

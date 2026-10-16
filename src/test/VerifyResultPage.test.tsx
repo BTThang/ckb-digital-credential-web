@@ -40,6 +40,21 @@ function publicVerification(over: Partial<PublicVerification> = {}): PublicVerif
       currentOwner: HOLDER,
       creationTxHash: TX_HASH,
     },
+    cryptographic: {
+      valid: true,
+      status: "verified",
+      reason: null,
+      checks: { signature: true, issuer: true },
+      proof: {
+        hasProof: true,
+        type: "CKB-CredentialSignature",
+        algorithm: "secp256k1",
+        created: "2026-01-15T00:00:00.000Z",
+        signType: "CkbSecp256k1",
+        issuerAddress: HOLDER,
+      },
+    },
+    combined: { valid: true, status: "verified", reason: null },
     ...over,
   };
 }

@@ -163,7 +163,7 @@ describe("api transport failures", () => {
   it("reports a timeout as a timeout rather than as unreachable", async () => {
     mockFetchRejection(new DOMException("The operation was aborted.", "TimeoutError"));
 
-    await expect(api.listTransactions(50)).rejects.toThrow(/timed out after 15s/);
+    await expect(api.listTransactions(50)).rejects.toThrow(/timed out after 25s/);
   });
 
   it("sends an abort signal so a hung request cannot spin forever", async () => {

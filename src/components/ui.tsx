@@ -9,12 +9,14 @@ export function badgeClass(value: string): string {
       return "badge badge-verified";
     case "pending":
     case "submitted":
+    case "unverified":
       return "badge badge-pending";
     case "unable_to_verify":
       return "badge badge-unable";
     case "not_found":
     case "failed":
     case "melted":
+    case "mismatch":
       return "badge badge-melted";
     default:
       return "badge badge-unknown";
