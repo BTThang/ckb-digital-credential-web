@@ -24,6 +24,17 @@ vi.mock("@/services/api", () => ({
   },
 }));
 
+// The verify page can read the connected wallet, so the provider is mocked the
+// same way the other page tests mock it. No wallet is connected by default.
+const wallet = {
+  address: null as string | null,
+  restoring: false,
+};
+
+vi.mock("@/context/WalletProvider", () => ({
+  useWallet: () => wallet,
+}));
+
 function coreResult(
   over: Partial<CoreVerificationResult> = {},
 ): CoreVerificationResult {
@@ -88,6 +99,8 @@ describe("VerifyPage", () => {
     verifySporeId.mockReset();
     lookupSpore.mockReset();
     verify.mockReset();
+    wallet.address = null;
+    wallet.restoring = false;
     lookupSpore.mockResolvedValue(null);
     verify.mockResolvedValue(coreResult());
   });
@@ -228,6 +241,40 @@ describe("VerifyPage", () => {
     });
     expect(verifySporeId).not.toHaveBeenCalled();
     expect(await screen.findByText(/Verified on chain/i)).toBeInTheDocument();
+  });
+
+  it("renders the family-neutral evidence summary", async () => {
+    const user = userEvent.setup();
+    verify.mockResolvedValue(
+      coreResult({
+        evidenceSummary: {
+          family: "vellum-claim",
+          identifier: DID,
+          state: "valid",
+          network: "testnet",
+          owner: OWNER,
+          outPoint: { txHash: TX_HASH, index: "0" },
+          checkedAt: "2026-01-01T00:00:00.000Z",
+          reason: null,
+        },
+      }),
+    );
+    render(
+      <MemoryRouter initialEntries={["/verify"]}>
+        <VerifyPage />
+      </MemoryRouter>,
+    );
+
+    await user.selectOptions(
+      screen.getByLabelText(/Credential family/i),
+      "vellum-claim",
+    );
+    await user.type(screen.getByLabelText(/did:ckb identifier/i), DID);
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+
+    expect(await screen.findByText("Evidence summary")).toBeInTheDocument();
+    expect(screen.getByText(OWNER)).toBeInTheDocument();
+    expect(screen.getByText(`${TX_HASH}#0`)).toBeInTheDocument();
   });
 
   it("rejects a malformed did:ckb identifier without asking the backend", async () => {

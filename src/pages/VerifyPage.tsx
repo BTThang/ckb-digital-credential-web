@@ -2,14 +2,18 @@ import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import CopyButton from "@/components/CopyButton";
-import { Alert, Card, Spinner, StatusBadge } from "@/components/ui";
+import DidProfileCard from "@/components/DidProfileCard";
+import { Alert, Card, Hash, Spinner, StatusBadge } from "@/components/ui";
+import { useWallet } from "@/context/WalletProvider";
 import { useAsync } from "@/hooks";
 import { api } from "@/services/api";
+import { fetchDidProfiles } from "@/services/ckb/did-profile";
 import type {
   CoreVerificationResult,
   IssuerEvidence,
   OwnershipVerification,
   SporeVerification,
+  VerificationEvidenceSummary,
 } from "@/types";
 import { addressExplorerUrl, txExplorerUrl } from "@/utils/explorer";
 import { formatDate, formatDateTime, humanizeToken } from "@/utils/format";
@@ -24,6 +28,15 @@ import {
 } from "@/utils/validation";
 
 type Family = "spore" | "vellum-claim" | "ckb-pop";
+
+/**
+ * Where the expected owner came from.
+ *
+ * This is the minimum state needed to keep a wallet-derived owner honest: a
+ * wallet-derived address follows the wallet, while an address the user typed
+ * is never overwritten by wallet state.
+ */
+type OwnerSource = "manual" | "wallet";
 
 const FAMILY_PLACEHOLDER: Record<Family, string> = {
   spore: "0x… (32 bytes)",
@@ -241,7 +254,13 @@ function IssuerEvidenceCard({ issuer }: { issuer: IssuerEvidence }) {
  * the value the verifier typed here - so a mismatch is a real fact about the
  * credential, not a client-side guess.
  */
-function OwnershipCard({ ownership }: { ownership: OwnershipVerification }) {
+function OwnershipCard({
+  ownership,
+  source,
+}: {
+  ownership: OwnershipVerification;
+  source: OwnerSource | null;
+}) {
   const checked = Boolean(ownership.chainOwner);
 
   return (
@@ -285,9 +304,71 @@ function OwnershipCard({ ownership }: { ownership: OwnershipVerification }) {
         <dt>Checked at</dt>
         <dd>{formatDateTime(ownership.checkedAt)}</dd>
       </dl>
+      {source === "wallet" ? (
+        <p className="muted small" style={{ marginTop: 8 }}>
+          The expected owner is the address of your connected wallet.
+        </p>
+      ) : null}
+      <p className="muted small" style={{ marginTop: 8 }}>
+        Ownership is a separate fact from the verification result: a different
+        holder does not make the credential invalid, and a matching holder does
+        not make it valid.
+      </p>
     </Card>
   );
 }
+/**
+ * Phase 9 - the family-neutral chain facts behind a verdict.
+ *
+ * The card exists so a reader can see the identifier/network/owner/outpoint
+ * that supported the result without decoding family-specific evidence. It does
+ * not replace that evidence, which remains under the result's details.
+ */
+function EvidenceSummaryCard({
+  summary,
+}: {
+  summary: VerificationEvidenceSummary;
+}) {
+  return (
+    <Card>
+      <div className="card-title">
+        <h3>Evidence summary</h3>
+      </div>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        These facts were reported by the {summary.family ?? "routed"} verifier
+        from chain state. The family-specific evidence remains the authoritative
+        detail.
+      </p>
+      <dl className="dl">
+        <dt>Network</dt>
+        <dd>{summary.network ?? "—"}</dd>
+        <dt>On-chain owner</dt>
+        <dd className="break mono">
+          {summary.owner ? (
+            <a
+              href={addressExplorerUrl(summary.owner)}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {summary.owner}
+            </a>
+          ) : (
+            "—"
+          )}
+        </dd>
+        <dt>Outpoint</dt>
+        <dd className="break mono">
+          {summary.outPoint
+            ? `${summary.outPoint.txHash}${summary.outPoint.index !== null ? `#${summary.outPoint.index}` : ""}`
+            : "—"}
+        </dd>
+        <dt>Checked at</dt>
+        <dd>{formatDateTime(summary.checkedAt)}</dd>
+      </dl>
+    </Card>
+  );
+}
+
 export default function VerifyPage() {
   const [params, setParams] = useSearchParams();
   const initialSporeId = params.get("sporeId") ?? "";
@@ -302,7 +383,25 @@ export default function VerifyPage() {
   );
   const [input, setInput] = useState(initialId);
   const [submitted, setSubmitted] = useState(initialId);
-  const [expectedOwner, setExpectedOwner] = useState("");
+  const [ownerInput, setOwnerInput] = useState("");
+  const [ownerSource, setOwnerSource] = useState<OwnerSource | null>(null);
+
+  // The connected wallet is the source of truth for a wallet-derived owner.
+  // The address is the signer's own address (`getInternalAddress`), never a
+  // recommended address, because only the signer can say which lock it holds.
+  const { address: walletAddress, restoring: walletRestoring } = useWallet();
+
+  // A wallet address is only useful if it is a real CKB address; anything else
+  // must never reach the field, because an invalid owner disables the whole
+  // verification.
+  const connectedAddress =
+    walletAddress && isCkbAddress(walletAddress) ? walletAddress : null;
+
+  // A wallet-derived owner follows the wallet: switching wallets must not leave
+  // a stale address behind, and a disconnect must not leave an address that no
+  // longer belongs to anyone. A manually typed owner is never touched by the
+  // wallet - it is derived, not synchronised, so nothing has to be written back.
+  const expectedOwner = ownerSource === "wallet" ? (connectedAddress ?? "") : ownerInput;
 
   const normalizedSpore = normalizeSporeId(submitted);
   const normalizedCkbPop = normalizeCkbPopId(submitted);
@@ -348,6 +447,15 @@ export default function VerifyPage() {
     { enabled: validSpore },
   );
 
+  // The public DID profile of the connected address. It is decoration only: it
+  // is read in its own request, it never reaches the verification API and it
+  // cannot change a verdict.
+  const didProfiles = useAsync(
+    () => fetchDidProfiles(connectedAddress ?? ""),
+    [connectedAddress],
+    { enabled: Boolean(connectedAddress) },
+  );
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const value = input.trim();
@@ -356,6 +464,18 @@ export default function VerifyPage() {
     if (value) q[family === "spore" ? "sporeId" : "id"] = value;
     if (family !== "spore") q.family = family;
     setParams(q, { replace: true });
+  }
+
+  function handleOwnerInput(value: string) {
+    setOwnerInput(value);
+    // Typing takes the field back from the wallet: from here on the wallet
+    // must not overwrite what the user wrote.
+    setOwnerSource("manual");
+  }
+
+  function handleUseConnectedWallet() {
+    if (!connectedAddress) return;
+    setOwnerSource("wallet");
   }
 
   const state = validSpore ? report.data?.state : undefined;
@@ -416,14 +536,55 @@ export default function VerifyPage() {
               value={expectedOwner}
               spellCheck={false}
               placeholder="ckt1…"
-              onChange={(event) => setExpectedOwner(event.target.value)}
+              onChange={(event) => handleOwnerInput(event.target.value)}
             />
+            <div className="row">
+              {connectedAddress ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={handleUseConnectedWallet}
+                  >
+                    Use connected wallet
+                  </button>
+                  <span className="muted small">
+                    Connected: <Hash value={connectedAddress} />
+                  </span>
+                </>
+              ) : walletAddress ? (
+                <span className="muted small">
+                  The connected wallet did not report a usable CKB address.
+                </span>
+              ) : (
+                <span className="muted small">
+                  {walletRestoring
+                    ? "Restoring wallet…"
+                    : "Connect a wallet to fill this from your own address."}
+                </span>
+              )}
+              {ownerSource === "wallet" ? (
+                <span className="muted small">
+                  {connectedAddress
+                    ? "Filled from your connected wallet"
+                    : "Waiting for a connected wallet"}
+                </span>
+              ) : null}
+            </div>
             <span className="hint">
               Supply an address to also ask “does this credential belong to this
               holder?”. The owner is still read from the chain; this only becomes
               the comparison.
             </span>
           </div>
+          {connectedAddress && didProfiles.loading ? (
+            <p className="muted small" style={{ margin: 0 }}>
+              Reading the public profile published on chain…
+            </p>
+          ) : null}
+          {connectedAddress && didProfiles.data?.length ? (
+            <DidProfileCard profiles={didProfiles.data} />
+          ) : null}
           <div className="row">
             <button
               type="submit"
@@ -614,11 +775,17 @@ export default function VerifyPage() {
                 ) : null}
               </Card>
 
+              {coreRes.evidenceSummary ? (
+                <EvidenceSummaryCard summary={coreRes.evidenceSummary} />
+              ) : null}
               {coreRes.issuer ? (
                 <IssuerEvidenceCard issuer={coreRes.issuer} />
               ) : null}
               {coreRes.ownership ? (
-                <OwnershipCard ownership={coreRes.ownership} />
+                <OwnershipCard
+                  ownership={coreRes.ownership}
+                  source={ownerSource}
+                />
               ) : null}
             </div>
           ) : null}
@@ -629,11 +796,17 @@ export default function VerifyPage() {
           Phase 5 issuer/ownership cards whenever it ran. */}
       {validSpore && coreEnabled ? (
         <div style={{ marginTop: 18 }} className="stack">
+          {coreRes?.evidenceSummary ? (
+            <EvidenceSummaryCard summary={coreRes.evidenceSummary} />
+          ) : null}
           {coreRes?.issuer ? (
             <IssuerEvidenceCard issuer={coreRes.issuer} />
           ) : null}
           {coreRes?.ownership ? (
-            <OwnershipCard ownership={coreRes.ownership} />
+            <OwnershipCard
+              ownership={coreRes.ownership}
+              source={ownerSource}
+            />
           ) : null}
         </div>
       ) : null}

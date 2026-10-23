@@ -201,6 +201,22 @@ export interface OwnershipVerification {
   checkedAt: string;
 }
 
+/**
+ * Phase 9 - a family-neutral view of the chain facts behind a verdict. Derived
+ * by the backend from the family's own evidence; it never replaces the
+ * family-specific `result.evidence`.
+ */
+export interface VerificationEvidenceSummary {
+  family: CredentialFamily | null;
+  identifier: string;
+  state: CoreVerificationState;
+  network: string | null;
+  owner: string | null;
+  outPoint: { txHash: string; index: string | null } | null;
+  checkedAt: string;
+  reason: string | null;
+}
+
 export interface CoreVerificationResult {
   identifier: string;
   family: CredentialFamily | null;
@@ -211,6 +227,8 @@ export interface CoreVerificationResult {
   reason: string | null;
   checkedAt: string;
   result: FamilyVerification | null;
+  /** Phase 9 - additive, family-neutral chain facts. Optional for older APIs. */
+  evidenceSummary?: VerificationEvidenceSummary;
   /** Always present; null when the family has no issuer concept. */
   issuer: IssuerEvidence | null;
   /** Present only when the caller supplied an expected owner. */
