@@ -27,7 +27,22 @@ import {
   normalizeSporeId,
 } from "@/utils/validation";
 
-type Family = "spore" | "vellum-claim" | "ckb-pop";
+/**
+ * Families come from `GET /api/verify/families`, so the selector is not tied
+ * to the list this build was compiled with. The display metadata below still
+ * gives the families we know today their tailored input UX; a newly discovered
+ * family falls back to a generic label and is validated by the backend.
+ */
+interface FamilyOption {
+  family: string;
+  description: string;
+}
+
+interface FamilyDisplay {
+  label: string;
+  placeholder: string;
+  hint: string;
+}
 
 /**
  * Where the expected owner came from.
@@ -38,25 +53,54 @@ type Family = "spore" | "vellum-claim" | "ckb-pop";
  */
 type OwnerSource = "manual" | "wallet";
 
-const FAMILY_PLACEHOLDER: Record<Family, string> = {
-  spore: "0x… (32 bytes)",
-  "vellum-claim": "did:ckb:…",
-  "ckb-pop": "0x + 120 hex",
+const KNOWN_FAMILY_DISPLAY: Record<string, FamilyDisplay> = {
+  spore: {
+    label: "Spore id",
+    placeholder: "0x… (32 bytes)",
+    hint: "A Spore id is 32 bytes of hex — the cell's type script args.",
+  },
+  "vellum-claim": {
+    label: "did:ckb identifier",
+    placeholder: "did:ckb:…",
+    hint: "A Vellum claim is a did:ckb identifier, resolved to its live DID Metadata Cell.",
+  },
+  "ckb-pop": {
+    label: "CKB-PoP identifier",
+    placeholder: "0x + 120 hex",
+    hint: "A CKB-PoP badge identifier is the dob-badge type script args (0x + 120 hex).",
+  },
 };
 
-const FAMILY_HINT: Record<Family, string> = {
-  spore: "A Spore id is 32 bytes of hex — the cell's type script args.",
-  "vellum-claim":
-    "A Vellum claim is a did:ckb identifier, resolved to its live DID Metadata Cell.",
-  "ckb-pop":
-    "A CKB-PoP badge identifier is the dob-badge type script args (0x + 120 hex).",
-};
+const FALLBACK_FAMILIES: FamilyOption[] = [
+  { family: "spore", description: "Spore credentials" },
+  { family: "vellum-claim", description: "Vellum claims" },
+  { family: "ckb-pop", description: "CKB proof-of-personhood badges" },
+];
 
-const FAMILY_LABEL: Record<Family, string> = {
-  spore: "Spore id",
-  "vellum-claim": "did:ckb identifier",
-  "ckb-pop": "CKB-PoP identifier",
-};
+function familyDisplay(family: string): FamilyDisplay {
+  return (
+    KNOWN_FAMILY_DISPLAY[family] ?? {
+      label: `${family} identifier`,
+      placeholder: "Credential identifier",
+      hint: `The identifier is read from the live chain by the ${family} verifier.`,
+    }
+  );
+}
+
+function isKnownFamily(family: string): boolean {
+  return family === "spore" || family === "vellum-claim" || family === "ckb-pop";
+}
+
+function familyOptionLabel(family: string): string {
+  if (family === "spore") return "Spore";
+  if (family === "vellum-claim") return "Vellum claim (did:ckb)";
+  if (family === "ckb-pop") return "CKB-PoP";
+  return family;
+}
+
+function initialFamilyFrom(value: string | null): string {
+  return value && value.trim().length > 0 ? value : "spore";
+}
 
 const STATE_COPY: Record<
   string,
@@ -371,20 +415,46 @@ function EvidenceSummaryCard({
 
 export default function VerifyPage() {
   const [params, setParams] = useSearchParams();
-  const initialSporeId = params.get("sporeId") ?? "";
-  const initialId = initialSporeId;
-  const initialFamily = params.get("family");
-  const [family, setFamily] = useState<Family>(
-    initialFamily === "ckb-pop"
-      ? "ckb-pop"
-      : initialFamily === "vellum-claim"
-        ? "vellum-claim"
-        : "spore",
+  // `sporeId` is the original query key; `id` is what this page writes for
+  // every other family. Reading both keeps a pasted/shareable URL working
+  // after a reload, including for a family discovered from the API.
+  const initialId = params.get("sporeId") ?? params.get("id") ?? "";
+  const [family, setFamily] = useState<string>(() =>
+    initialFamilyFrom(params.get("family")),
   );
   const [input, setInput] = useState(initialId);
   const [submitted, setSubmitted] = useState(initialId);
   const [ownerInput, setOwnerInput] = useState("");
   const [ownerSource, setOwnerSource] = useState<OwnerSource | null>(null);
+
+  // Family discovery is additive: the API decides what is routable, while a
+  // failed or absent discovery call falls back to the built-in list so offline
+  // builds and tests keep working. Spore stays the default either way.
+  const familyDiscovery = useAsync(
+    async (): Promise<FamilyOption[]> => {
+      if (typeof api.listFamilies !== "function") return FALLBACK_FAMILIES;
+      try {
+        const discovered = await api.listFamilies();
+        if (discovered.length === 0) return FALLBACK_FAMILIES;
+        return discovered.map((entry) => ({
+          family: String(entry.family),
+          description: entry.description,
+        }));
+      } catch {
+        return FALLBACK_FAMILIES;
+      }
+    },
+    [],
+  );
+  const discoveredFamilies = familyDiscovery.data ?? FALLBACK_FAMILIES;
+  // A family named in the URL must still have a matching option even if the
+  // discovery response does not mention it; the backend will answer for it.
+  const familyOptions = discoveredFamilies.some(
+    (entry) => entry.family === family,
+  )
+    ? discoveredFamilies
+    : [...discoveredFamilies, { family, description: "" }];
+  const currentFamily = familyDisplay(family);
 
   // The connected wallet is the source of truth for a wallet-derived owner.
   // The address is the signer's own address (`getInternalAddress`), never a
@@ -409,6 +479,11 @@ export default function VerifyPage() {
   const validSpore = family === "spore" && isSporeId(normalizedSpore);
   const validCkbPop = family === "ckb-pop" && isCkbPopId(normalizedCkbPop);
   const validDid = family === "vellum-claim" && isDidCkb(normalizedDid);
+  // A discovered family without a client-side rule is still allowed through:
+  // the core owns identifier validation per family, so the UI must not reject
+  // an identifier merely because it predates this build.
+  const validDiscovered =
+    !isKnownFamily(family) && submitted.trim().length > 0;
 
   const ownerValue = expectedOwner.trim();
   const ownerProvided = ownerValue.length > 0;
@@ -421,8 +496,11 @@ export default function VerifyPage() {
       ? normalizedDid
       : family === "ckb-pop"
         ? normalizedCkbPop
-        : normalizedSpore;
-  const coreEnabled = (validSpore || validDid || validCkbPop) && ownerValid;
+        : family === "spore"
+          ? normalizedSpore
+          : submitted.trim();
+  const coreEnabled =
+    (validSpore || validDid || validCkbPop || validDiscovered) && ownerValid;
 
   const report = useAsync(
     () => api.verifySporeId(normalizedSpore),
@@ -502,29 +580,30 @@ export default function VerifyPage() {
               id="family"
               value={family}
               onChange={(event) => {
-                const f = event.target.value as Family;
-                setFamily(f);
+                setFamily(event.target.value);
                 setSubmitted("");
                 setInput("");
                 setParams({}, { replace: true });
               }}
             >
-              <option value="spore">Spore</option>
-              <option value="vellum-claim">Vellum claim (did:ckb)</option>
-              <option value="ckb-pop">CKB-PoP</option>
+              {familyOptions.map((option) => (
+                <option key={option.family} value={option.family}>
+                  {familyOptionLabel(option.family)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
-            <label htmlFor="spore-id">{FAMILY_LABEL[family]}</label>
+            <label htmlFor="spore-id">{currentFamily.label}</label>
             <input
               id="spore-id"
               className="mono"
               value={input}
               spellCheck={false}
-              placeholder={FAMILY_PLACEHOLDER[family]}
+              placeholder={currentFamily.placeholder}
               onChange={(event) => setInput(event.target.value)}
             />
-            <span className="hint">{FAMILY_HINT[family]}</span>
+            <span className="hint">{currentFamily.hint}</span>
           </div>
           <div className="field">
             <label htmlFor="expected-owner">
@@ -716,7 +795,7 @@ export default function VerifyPage() {
         </div>
       ) : null}
 
-      {(validCkbPop || validDid) ? (
+      {family !== "spore" && (validCkbPop || validDid || validDiscovered) ? (
         <div style={{ marginTop: 18 }}>
           {core.loading ? (
             <Spinner label={`Verifying ${family}…`} />
