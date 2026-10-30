@@ -316,7 +316,11 @@ p {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  min-width: 236px;
+  min-width: min(236px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  /* A short landscape viewport must still reach the last action. */
+  max-height: calc(100dvh - 96px);
+  overflow-y: auto;
   padding: 6px;
   background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
   backdrop-filter: blur(var(--glass-blur)) saturate(160%);
@@ -390,6 +394,13 @@ p {
 }
 
 .user-menu-panel .user-menu-action + .user-menu-action {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: none;
+}
+
+/* A wallet-only menu has no links above it, so the header divider is enough. */
+.user-menu-panel .user-menu-action-first {
   margin-top: 0;
   padding-top: 8px;
   border-top: none;

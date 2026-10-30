@@ -20,7 +20,11 @@ vi.mock("@/services/api", () => ({
 }));
 
 const disconnect = vi.fn();
-const wallet = { address: ADDRESS as string | null, disconnect };
+const wallet = {
+  address: ADDRESS as string | null,
+  source: "joyid" as "joyid" | "connector" | null,
+  disconnect,
+};
 
 vi.mock("@/context/WalletProvider", () => ({
   useWallet: () => wallet,
@@ -58,20 +62,51 @@ describe("UserMenu", () => {
     });
     disconnect.mockReset();
     wallet.address = ADDRESS;
+    wallet.source = "joyid";
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("stays hidden until there is a session", async () => {
+  it("stays hidden until there is a session or a connected wallet", async () => {
     me.mockResolvedValue({ authenticated: false, user: null });
+    wallet.address = null;
     renderMenu();
 
     await waitFor(() => {
       expect(me).toHaveBeenCalled();
     });
     expect(screen.queryByRole("button", { name: /Alice/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Wallet menu/ })).not.toBeInTheDocument();
+  });
+
+  it("offers a working disconnect to a connected wallet without a session", async () => {
+    me.mockResolvedValue({ authenticated: false, user: null });
+    const viewer = userEvent.setup();
+    renderMenu();
+
+    await waitFor(() => {
+      expect(me).toHaveBeenCalled();
+    });
+
+    // Wallet connection is independent of login: the menu must still exist.
+    await viewer.click(screen.getByRole("button", { name: /Wallet menu/ }));
+    expect(screen.getByText("Connected wallet")).toBeInTheDocument();
+    expect(screen.getByText(ADDRESS)).toBeInTheDocument();
+    // Provider identity moves into the menu instead of repeating in the header.
+    expect(screen.getByText("Connected via JoyID")).toBeInTheDocument();
+    // Session-only navigation has nothing to point at.
+    expect(screen.queryByRole("menuitem", { name: "Profile" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Logout" })).not.toBeInTheDocument();
+
+    await viewer.click(
+      screen.getByRole("menuitem", { name: "Disconnect wallet" }),
+    );
+
+    // Disconnecting is not an authenticated action.
+    expect(disconnect).toHaveBeenCalled();
+    expect(logout).not.toHaveBeenCalled();
   });
 
   it("offers profile, my and issued credentials plus logout", async () => {
@@ -246,4 +281,68 @@ describe("UserMenu", () => {
     await viewer.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
+});
+
+describe("UserMenu on a narrow viewport", () => {
+  const originalWidth = window.innerWidth;
+
+  beforeEach(() => {
+    me.mockReset().mockResolvedValue({ authenticated: true, user: user() });
+    logout.mockReset().mockResolvedValue({ authenticated: false, user: null });
+    disconnect.mockReset();
+    wallet.address = ADDRESS;
+    wallet.source = "joyid";
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: originalWidth,
+    });
+    vi.restoreAllMocks();
+  });
+
+  it.each([360, 390, 430])(
+    "keeps the whole menu inside a %ipx viewport",
+    async (width) => {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        writable: true,
+        value: width,
+      });
+
+      const viewer = userEvent.setup();
+      renderMenu();
+
+      const trigger = await screen.findByRole("button", { name: /Alice/ });
+      // The header wraps at these widths, so the trigger can sit near the left
+      // edge. The panel must be clamped, not anchored blindly to the right.
+      vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
+        x: 24,
+        y: 20,
+        top: 20,
+        left: 24,
+        right: 80,
+        bottom: 56,
+        width: 56,
+        height: 36,
+        toJSON: () => ({}),
+      } as DOMRect);
+
+      await viewer.click(trigger);
+
+      const panel = screen.getByRole("menu");
+      const left = trigger.getBoundingClientRect().left + parseFloat(panel.style.left);
+      const right = left + 236;
+      expect(left).toBeGreaterThanOrEqual(12);
+      expect(right).toBeLessThanOrEqual(width - 12);
+
+      // All actions stay reachable at this size.
+      await viewer.click(
+        screen.getByRole("menuitem", { name: "Disconnect wallet" }),
+      );
+      expect(disconnect).toHaveBeenCalled();
+    },
+  );
 });
