@@ -35,7 +35,12 @@ export interface WalletState {
   disconnect: () => void;
 }
 
-const WalletContext = createContext<WalletState | null>(null);
+/**
+ * Exported so the browser-test harness can supply a deterministic signer
+ * without duplicating the provider. Production code still reads it only
+ * through `useWallet`.
+ */
+export const WalletContext = createContext<WalletState | null>(null);
 
 export function useWallet(): WalletState {
   const context = useContext(WalletContext);

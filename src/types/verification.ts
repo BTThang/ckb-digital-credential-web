@@ -30,6 +30,8 @@ export interface SporeVerification {
    */
   creationTxHash: string;
   creationTxStatus: string | null;
+  /** Output index of the live cell within the creation transaction. */
+  creationOutputIndex?: string | null;
   blockNumber: string | null;
   capacity: string | null;
   reason: string | null;
@@ -98,6 +100,8 @@ export interface PublicVerificationBlockchain {
   sporeId: string;
   currentOwner: string | null;
   creationTxHash: string | null;
+  /** Output index of the live cell within `creationTxHash`, when reported. */
+  creationOutputIndex?: string | null;
 }
 
 export interface PublicVerification {

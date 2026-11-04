@@ -36,9 +36,10 @@ export default tseslint.config(
     },
   },
   {
-    // Vite config files and the vitest config run in Node, not the browser.
-    files: ["*.config.ts", "*.config.js"],
-    languageOptions: { globals: globals.node },
+    // Vite config files, the Playwright config and the browser specs run in
+    // Node, but the specs also touch `window` inside page.evaluate callbacks.
+    files: ["*.config.ts", "*.config.js", "e2e/**/*.ts"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     // A context provider and its hook belong in one file, and `ui.tsx` is a
