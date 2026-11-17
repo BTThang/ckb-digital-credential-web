@@ -68,7 +68,7 @@ A transfer moves the existing Spore cell to a new owner while preserving its cre
 
 ### 2. Multi-family Verification
 
-The backend uses a shared verification core with family-specific verifiers.
+The backend uses a shared verification core with family-specific verifiers:
 
 - Spore credentials.
 - Vellum Claim (`did:ckb`) credentials.
@@ -305,7 +305,7 @@ The MATCH and MISMATCH scenarios demonstrate that ownership comparison is indepe
 
 ![Mobile verification page](https://raw.githubusercontent.com/BTThang/ckbuilder/main/week12/evidence/mobile/2026-11-10_mobile_verify-page_unconnected.png)
 
-Additional wallet and deployment evidence is available in the [Week 12 evidence report](https://github.com/BTThang/ckbuilder/blob/main/week12/ckb_weekly_report_w12.md).
+Additional wallet and deployment evidence is available in the [Week 12 Final Report](https://github.com/BTThang/ckbuilder/blob/main/week12/ckb_weekly_report_w12.md).
 
 ## Production Deployment
 
